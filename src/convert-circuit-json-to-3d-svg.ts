@@ -1,13 +1,13 @@
-import type { AnyCircuitElement } from "circuit-json"
 import { su } from "@tscircuit/circuit-json-util"
+import type { AnyCircuitElement, PcbPanel } from "circuit-json"
 import Debug from "debug"
 import * as THREE from "three"
 import { SVGRenderer } from "three/examples/jsm/renderers/SVGRenderer.js"
 import { createSimplifiedBoardGeom } from "./soup-to-3d"
 import { createBoardMaterial } from "./utils/create-board-material"
 import { createGeometryFromPolygons } from "./utils/create-geometry-from-polygons"
+import { getBoardEdgeColor } from "./utils/get-board-edge-color"
 import { renderComponent } from "./utils/render-component"
-import { colors } from "./geoms/constants"
 
 interface CircuitToSvgOptions {
   width?: number
@@ -93,18 +93,22 @@ export async function convertCircuitJsonTo3dSvg(
     await renderComponent(component, scene)
   }
 
-  const boardData = su(circuitJson).pcb_board.list()[0]
+  const boards = su(circuitJson).pcb_board.list()
+  const firstPanel = circuitJson.find(
+    (circuitElement): circuitElement is PcbPanel =>
+      circuitElement.type === "pcb_panel",
+  )
+  const boardData = firstPanel
+    ? boards.find((board) => board.pcb_panel_id === firstPanel.pcb_panel_id)
+    : boards.find((board) => !board.pcb_panel_id)
 
   // Add board geometry after components
   const boardGeom = createSimplifiedBoardGeom(circuitJson)
   if (boardGeom) {
-    // Use green solder mask color for the board
-    const solderMaskColor = colors.fr4SolderMaskGreen
-    const baseColor = new THREE.Color(
-      solderMaskColor[0],
-      solderMaskColor[1],
-      solderMaskColor[2],
-    )
+    const edgeColor = getBoardEdgeColor({
+      material: boardData?.material ?? "fr4",
+      solder_mask_color: boardData?.solder_mask_color,
+    })
 
     for (const geom of boardGeom) {
       const g = geom as any
@@ -113,7 +117,7 @@ export async function convertCircuitJsonTo3dSvg(
 
       const material = createBoardMaterial({
         material: boardData?.material,
-        color: baseColor,
+        color: edgeColor,
         side: THREE.DoubleSide,
       })
       const mesh = new THREE.Mesh(geometry, material)

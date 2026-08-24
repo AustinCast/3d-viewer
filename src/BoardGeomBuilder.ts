@@ -26,7 +26,7 @@ import type {
   PcbVia,
 } from "circuit-json"
 import type { GeomContext } from "./GeomContext"
-import { boardMaterialColors, colors, M } from "./geoms/constants"
+import { colors, M } from "./geoms/constants"
 import {
   arePointsClockwise,
   createBoardGeomWithOutline,
@@ -34,6 +34,7 @@ import {
 import { createHoleWithPolygonPadHoleGeom } from "./geoms/create-hole-with-polygon-pad"
 import { platedHole } from "./geoms/plated-hole"
 import { createViaBoardDrill, createViaCopper } from "./geoms/via-geoms"
+import { getBoardEdgeColor } from "./utils/get-board-edge-color"
 import {
   clampRectBorderRadius,
   extractRectBorderRadius,
@@ -109,6 +110,7 @@ export class BoardGeomBuilder {
         thickness: firstBoardInPanel?.thickness ?? 1.4,
         material: firstBoardInPanel?.material ?? "fr4",
         num_layers: firstBoardInPanel?.num_layers ?? 2,
+        solder_mask_color: firstBoardInPanel?.solder_mask_color,
       } as PcbBoard
     } else {
       // Skip boards that are inside a panel - only render the panel outline
@@ -698,9 +700,11 @@ export class BoardGeomBuilder {
   private finalize() {
     if (!this.boardGeom) return
     // Colorize the final board geometry
-    const boardMaterialColor =
-      boardMaterialColors[this.board.material] ?? colors.fr4Tan
-    this.boardGeom = colorize(boardMaterialColor, this.boardGeom)
+    const boardEdgeColor = getBoardEdgeColor(this.board)
+    this.boardGeom = colorize(
+      [boardEdgeColor.r, boardEdgeColor.g, boardEdgeColor.b],
+      this.boardGeom,
+    )
 
     this.finalGeoms = [
       this.boardGeom,

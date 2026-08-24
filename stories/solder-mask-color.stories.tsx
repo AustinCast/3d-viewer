@@ -1,38 +1,68 @@
-import { Circuit } from "@tscircuit/core"
+import { useMemo } from "react"
 import { CadViewer } from "src/CadViewer"
+import complexBoardCircuitJson from "./assets/complex-board.json"
 
-type PcbColor =
+type SoldermaskColor =
   | "green"
-  | "purple"
   | "red"
-  | "yellow"
   | "blue"
-  | "white"
+  | "purple"
   | "black"
+  | "white"
+  | "yellow"
 
-const createColorBoardCircuit = (color: PcbColor) => {
-  const circuit = new Circuit()
-  circuit.add(
-    <board width="20mm" height="20mm" solderMaskColor={color}>
-      <resistor name="R1" footprint="0402" resistance="1k" pcbX={0} pcbY={0} />
-    </board>,
-  )
-  return circuit.getCircuitJson()
-}
+const SOLDER_MASK_STORY_ELEMENT_TYPES = new Set([
+  "pcb_board",
+  "pcb_component",
+  "pcb_smtpad",
+  "pcb_trace",
+  "pcb_via",
+  "pcb_plated_hole",
+  "pcb_hole",
+  "pcb_copper_pour",
+  "pcb_silkscreen_path",
+  "pcb_silkscreen_text",
+])
 
-const ColorBoard = ({ color }: { color: PcbColor }) => (
-  <CadViewer circuitJson={createColorBoardCircuit(color) as any} />
+const soldermaskColorsCircuitJson = complexBoardCircuitJson.filter(
+  (circuitElement) => SOLDER_MASK_STORY_ELEMENT_TYPES.has(circuitElement.type),
 )
 
-export const GreenSolderMask = () => <ColorBoard color="green" />
-export const PurpleSolderMask = () => <ColorBoard color="purple" />
-export const RedSolderMask = () => <ColorBoard color="red" />
-export const YellowSolderMask = () => <ColorBoard color="yellow" />
-export const BlueSolderMask = () => <ColorBoard color="blue" />
-export const WhiteSolderMask = () => <ColorBoard color="white" />
-export const BlackSolderMask = () => <ColorBoard color="black" />
+const getCircuitJsonWithSoldermaskColor = (solderMaskColor: SoldermaskColor) =>
+  soldermaskColorsCircuitJson.map((circuitElement) =>
+    circuitElement.type === "pcb_board"
+      ? { ...circuitElement, solder_mask_color: solderMaskColor }
+      : circuitElement,
+  )
+
+const SoldermaskColorExample = ({
+  solderMaskColor,
+}: {
+  solderMaskColor: SoldermaskColor
+}) => {
+  const circuitJson = useMemo(
+    () => getCircuitJsonWithSoldermaskColor(solderMaskColor),
+    [solderMaskColor],
+  )
+
+  return <CadViewer circuitJson={circuitJson} autoRotateDisabled />
+}
+
+export const Green = () => <SoldermaskColorExample solderMaskColor="green" />
+
+export const Red = () => <SoldermaskColorExample solderMaskColor="red" />
+
+export const Blue = () => <SoldermaskColorExample solderMaskColor="blue" />
+
+export const Purple = () => <SoldermaskColorExample solderMaskColor="purple" />
+
+export const Black = () => <SoldermaskColorExample solderMaskColor="black" />
+
+export const White = () => <SoldermaskColorExample solderMaskColor="white" />
+
+export const Yellow = () => <SoldermaskColorExample solderMaskColor="yellow" />
 
 export default {
-  title: "SolderMaskColor",
-  component: BlueSolderMask,
+  title: "Soldermask Colors/Examples",
+  component: SoldermaskColorExample,
 }

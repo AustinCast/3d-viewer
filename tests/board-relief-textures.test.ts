@@ -110,11 +110,14 @@ const withCanvasDocument = (run: () => void) => {
   }
 }
 
-const fillSoldermask = (canvas: TestCanvas) => {
+const fillSoldermask = (
+  canvas: TestCanvas,
+  color: [number, number, number, number] = [20, 110, 55, 255],
+) => {
   for (let y = 0; y < canvas.height; y += 1) {
     for (let x = 0; x < canvas.width; x += 1) {
       // This bright green used to trigger the g > 88 masked-copper heuristic.
-      canvas.setPixel(x, y, [20, 110, 55, 255])
+      canvas.setPixel(x, y, color)
     }
   }
 }
@@ -151,5 +154,46 @@ test("trace mask applies masked-copper relief only on trace geometry", () => {
 
     const bump = relief!.bumpMap.image as unknown as TestCanvas
     expect(bump.channel(2, 2, 0)).toBeLessThan(bump.channel(1, 1, 0) - 80)
+  })
+})
+
+test("soldermask colors preserve masked-copper relief", () => {
+  withCanvasDocument(() => {
+    const soldermaskOverCopperColors = [
+      [119, 60, 34, 255],
+      [42, 70, 124, 255],
+      [86, 45, 105, 255],
+      [22, 23, 22, 255],
+      [218, 215, 211, 255],
+      [218, 197, 76, 255],
+    ] as const
+
+    for (const soldermaskColor of soldermaskOverCopperColors) {
+      const board = createCanvas(4, 4)
+      fillSoldermask(board, [...soldermaskColor])
+      const traceMask = createCanvas(4, 4)
+      traceMask.setPixel(2, 2, [255, 255, 255, 255])
+      const relief = createBoardReliefTextures(
+        asTexture(board),
+        asTexture(traceMask),
+      )
+      const bump = relief!.bumpMap.image as TestCanvas
+      expect(bump.channel(2, 2, 0)).toBeLessThan(100)
+    }
+
+    const yellowBoard = createCanvas(4, 4)
+    fillSoldermask(yellowBoard, [220, 200, 74, 255])
+    const yellowRelief = createBoardReliefTextures(asTexture(yellowBoard))
+    const yellowBump = yellowRelief!.bumpMap.image as TestCanvas
+    expect(yellowBump.channel(0, 0, 0)).toBeGreaterThan(170)
+
+    const yellowOverCopperBoard = createCanvas(4, 4)
+    fillSoldermask(yellowOverCopperBoard, [218, 197, 76, 255])
+    const yellowOverCopperRelief = createBoardReliefTextures(
+      asTexture(yellowOverCopperBoard),
+    )
+    const yellowOverCopperBump = yellowOverCopperRelief!.bumpMap
+      .image as TestCanvas
+    expect(yellowOverCopperBump.channel(0, 0, 0)).toBeGreaterThan(170)
   })
 })
